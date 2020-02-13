@@ -1,48 +1,55 @@
 <?php
-require 'vendor/autoload.php'; 
+require 'vendor/autoload.php';
 
 
-const FILE_EGRESSOS_CURSOS = 'csv/testes.csv';
+const FILE_TESTES = 'csv/testes.csv';
 const FILE_EGRESSOS_CURSOS = 'csv/egressos-cursos.csv';
 const FILE_EGRESSOS_RESIDENCIA_MEDICA = 'csv/egressos-res-medica.csv';
 const FILE_EGRESSOS_RESIDENCIA_MULTIPROFISSIONAL = 'csv/egressos-res-multiprofissional.csv';
 
+$listasHabilitadasParaEnvio = array(FILE_TESTES);
 $emails = [];
 
-$file = fopen(FILE_EGRESSOS_CURSOS, 'r');
-while (($line = fgetcsv($file)) !== FALSE) {
-   $emails[] = $line[0];
+
+$keyJson = file_get_contents('key.json');
+$key = json_decode($keyJson, true);
+
+foreach ($listasHabilitadasParaEnvio as $lista) {
+    $file = fopen($lista, 'r');
+    while (($line = fgetcsv($file)) !== FALSE) {
+        $emails[] = $line[0];
+    }
 }
 
-$file = fopen(FILE_EGRESSOS_RESIDENCIA_MEDICA, 'r');
-while (($line = fgetcsv($file)) !== FALSE) {
-   $emails[] = $line[0];
-}
+$mensagem = "
+    <html>
+    <head>
+        <title></title>
+    </head>
+    <body>
+         <a href='https://docs.google.com/forms/d/e/1FAIpQLScHapzRfg1zeUwB_agQbt1NboUvDIeGNrYdZjwaswiRL96mFw/viewform'>
+            <img src='http://academico.esp.ce.gov.br/miolo20/html/images/banner.png' />
+         </a>
+    </body>
+    </html>
+";
+foreach ($emails as $emailDestino) {
 
-$file = fopen(FILE_EGRESSOS_RESIDENCIA_MULTIPROFISSIONAL, 'r');
-while (($line = fgetcsv($file)) !== FALSE) {
-   $emails[] = $line[0];
-}
+    $email = new \SendGrid\Mail\Mail();
+    $email->setFrom("pesquisa.egressos@esp.ce.gov.br", "Escola de Saúde Pública do Ceará");
+    $email->setSubject("Pesquisa Egressos");
+    $email->addTo($emailDestino);
+    $email->addContent(
+        "text/html", $mensagem
+    );
 
-echo count($emails);
-die;
-
-$email = new \SendGrid\Mail\Mail(); 
-$email->setFrom("victor.magalhaesp@esp.ce.gov.br", "Victor TESTE SendGrid");
-$email->setSubject("Sending with SendGrid is Fun");
-$email->addTo("victor.magalhaesp@gmail.com", "Victor ESP");
-$email->addContent("text/plain", "Testando envio de email");
-$email->addContent(
-    "text/html", "<strong>Testando envio de email em PHP</strong>"
-);
-
-$key = getenv('SENDGRID_API_KEY');
-$sendgrid = new \SendGrid($key);
-try {
-    $response = $sendgrid->send($email);
-    print $response->statusCode() . "\n";
-    print_r($response->headers());
-    print $response->body() . "\n";
-} catch (Exception $e) {
-    echo 'Caught exception: '. $e->getMessage() ."\n";
+    $sendgrid = new \SendGrid($key['SENDGRID_API_KEY']);
+    try {
+        $response = $sendgrid->send($email);
+        print $response->statusCode() . "\n";
+        print_r($response->headers());
+        print $response->body() . "\n";
+    } catch (Exception $e) {
+        echo 'Caught exception: '. $e->getMessage() ."\n";
+    }
 }
